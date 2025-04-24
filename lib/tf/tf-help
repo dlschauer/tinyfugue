@@ -648,6 +648,14 @@ addworld()
           matched by the [1mtrigger[22;0m or to display the default message of a [1mhook[22;0m.  
           Default: normal.  See: [1mattributes[22;0m.  
 
+#/def -A
+#-A
+  -A[ngGLAurBbhC] 
+          Limit matching on whole-line [1mattribute[22;0m(s) (normal, [1mgag[22;0m, nohistory,
+          nolog, noactivity, underline, reverse, bold, bell, [1mhilite[22;0m, Color).
+          This should only be used with a [1mtrigger[22;0m (-t).
+          Default: none.  See: [1mattributes[22;0m.  
+
 #/def -P
 #-P
   -P[<[4mpart[24m>]<[4mattr[24m>[;[<[4mpart[24m>]<[4mattr[24m>]...  
@@ -2297,6 +2305,9 @@ list commands
   <[4mfile[24m>  Log to <[4mfile[24m>; -g is assumed if -ligw not given.  
   (none)  With no option, lists all open logs.  
   (none)  With an -ligw option, same as "ON".  
+
+  The [4mlog_time_format[24m variable controls the time stamp format
+  passed into [1mftime()[22m.
 
   When logging is enabled for a [1mhistory[22;0m, lines that are normally recorded in 
   that [1mhistory[22;0m are also appended to the log file (unless the line has the "L" 
@@ -8451,10 +8462,12 @@ Protocols
     /set ssl_continue
     /set ssl_depth
     /set ssl_verbose
+    /set ssl_insecure
 
   See: [1mprotocols[22;0m, [1mfeatures[22;0m, [1mconnect[22;0m, [1maddworld[22;0m, [1mworlds[22;0m, [1mfields[22;0m, [1mlistsockets[22;0m, 
   [1mspecial variables[22;0m, [1mssl_ca_dir[22;0m, [1mssl_ca_file[22;0m, [1mssl_continue[22;0m, [1mssl_depth[22;0m, 
-  [1mssl_verbose[22;0m
+  [1mssl_verbose[22;0m, [1mssl_insecure[22;0m
+
 
 &firewall
 &proxy
@@ -9238,6 +9251,12 @@ Special global variables
           (flag) Enable [1mautomatic login[22;0m [1mhook[22;0m.  (See: [1mautomatic login[22;0m, [1mhooks[22;0m, 
           [1m/world[22;0m) 
 
+#log_time_format
+#%log_time_format
+  [1mlog_time_format[22m=%H:%M:%S
+          Format to pass to ftime() when generating log file entries.
+          (See: [1mftime[22;0m, [1mlog[22;0m)
+
 #lp
 #%lp
   [1mlp[22m=off  (flag) Displays partial lines as [1mprompts[22;0m, after a short timeout.  
@@ -9534,6 +9553,11 @@ Special global variables
   [1mssl_verbose[22m=on
           Show cert chain when connecting.
 
+#ssl_insecure
+#%ssl_insecure
+  [1mssl_insecure[22m=on
+          Allow older less secure TLSv1 routines.
+
 #start_color
 #%start_color
 #start_color_*
@@ -9796,6 +9820,7 @@ Configuring the status area
   [1mstatus_fields(<[4mN[24m>)[22;0m.  
 #%status_field_defaults
 #status_rm
+#status_clear
 #status_edit
 #status_defaults
 #status_save
@@ -9803,6 +9828,7 @@ Configuring the status area
 #status_add
 #/clock
 #/status_rm
+#/status_clear
 #/status_edit
 #/status_defaults
 #/status_save
@@ -9884,6 +9910,11 @@ Configuring the status area
                   /status_add -Aclock foo:4 
                   /status_add -Afoo bar:4 
                   /status_add -Abar -s2 baz:4 
+
+  /status_clear -r<[4mN[24m>
+          Clear all of the fields in the given row.
+
+          Returns 1 if the row was cleared, 0 if the row number is invalid.
 
   /status_edit [-r<[4mN[24m>] <[4mname[24m>[:<[4mwidth[24m>[:<[4mattributes[24m>]] 
           If field <[4mname[24m> currently exists in any status row, replace it with 
@@ -10430,7 +10461,9 @@ tfopen()
   "a"     Open a file "<[4mname[24m>" for appending.  Write operations will occur 
           after existing file contents, if any.  
   "r"     Open a file "<[4mname[24m>" for reading.  (see also: "[1m/quote '[22;0m").  
-  "p"     Execute a shell command "<[4mname[24m>" and read its output (see also: 
+  "p"     Execute a shell command "<[4mname[24m>", and read its output (see also:
+          "[1m/quote ![22;0m").  
+  "P"     Execute a shell command "<[4mname[24m>", read and write its output.
           "[1m/quote ![22;0m").  
   "q"     Open a queue for reading and writing.  The <[4mname[24m> argument will 
           appear in the output of [1m/liststreams[22;0m, but has no other meaning.  
@@ -10872,6 +10905,10 @@ worlds
   string argument.
 
   Information on writing Lua scripts can be found in /help lua.
+
+  calllua() is also available as a function; in that case it behaves like a normal
+  Tinyfugue function (it can take multiple parameters which are passed to
+  the lua function; a single return value is supported.)
 
 &/purgelua
 

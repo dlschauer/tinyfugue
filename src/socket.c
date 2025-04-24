@@ -677,10 +677,17 @@ static void init_ssl(void)
     SSL_load_error_strings();
     SSL_library_init();
     /* XXX seed PRNG */
+    if( ssl_insecure ) {
+    ssl_ctx = SSL_CTX_new(TLSv1_client_method());
+    } else {
     ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+    }
     if (!ssl_ctx) {
 	ssl_err("SSL_CTX_new");
 	return;
+    }
+    if( ssl_insecure ) {
+        SSL_CTX_set_security_level(ssl_ctx,0);
     }
     if (!SSL_CTX_set_cipher_list(ssl_ctx, "ALL")) {
 	ssl_err("SSL_CTX_set_cipher_list");
@@ -2908,6 +2915,7 @@ static void handle_socket_lines(void)
 
 	} else {
 	    if (borg || hilite || gag) {
+		/* Run the trigger matches against this incoming text line */
 		if (find_and_run_matches(NULL, -1, &incoming_text, xworld(),
 		    TRUE, 0))
 		{
@@ -3529,6 +3537,24 @@ static int handle_socket_input(const char *simbuffer, int simlen, const char *en
                 continue;  /* avoid non-telnet processing */
 
             } else if (xsock->fsastate == TN_SB) {
+                    /*
+                     * Flush existing data before handling subnegotiation.
+                     *
+                     * This is needed for the handful of situations where
+                     * things like GMCP/ATCP messages happen to be wrapping
+                     * the incoming text lines rather than a purely out of
+                     * band notification.
+                     *
+                     * Ideally the server would send an EOR or GA here,
+                     * but MUDs use that to terminate the prompt line.
+                     */
+#if WIDECHAR
+		    inbound_decode_str(xsock->buffer, incomingposttelnet,
+                        incomingFSM, 0);
+#endif
+		    handle_socket_input_queue_lines(xsock);
+		    flushxsock();
+
 		if (xsock->subbuffer->len > RECEIVELIMIT) {
 		    /* It shouldn't take this long; server is broken.  Abort. */
 		    SStringcat(xsock->buffer, CS(xsock->subbuffer));
